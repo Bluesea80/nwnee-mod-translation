@@ -3,8 +3,8 @@ name: nwn-mod-translation
 displayName: NWN:EE 模组汉化流水线
 description: NWN:EE（无冬之夜增强版）模组（.mod/.erf/.hak）简体中文汉化的完整工程流水线——抽取 GFF 内 CExoLocString、按批翻译、字典式回填、结构级验收。覆盖对话(.dlg)、非对话(uti/utc/are/jrl/ifo/git/utp/ute/utt/utw)与premium三部曲(mod+hak双层)三条线。当需要继续/复查 Aielund Saga 任意章节、做 Kingmaker/ShadowGuard/Witch's Wake 三部曲汉化，或对任何 NWN:EE 模组做同类汉化时使用。实测来自 Aielund Saga 全 7 章汉化全闭环 + 三部曲 Witch's Wake 交付。
 agent_created: true
-version: 1.3.0
-summary: NWN:EE 模组简体中文汉化流水线——抽取 GFF CExoLocString、按批翻译、字典式回填、结构级验收。对话 + 非对话 + 三部曲(mod+hak)三条线，含四铁律、引擎 token 保护、译名纪律、TLK/strref 速查与 19 个致命坑（strref 复用错配 / 改译双写 / 审计假阳性 / .ncs 台词 / 共享临时文件）。
+version: 1.5.0
+summary: NWN:EE 模组简体中文汉化流水线——抽取 GFF CExoLocString、按批翻译、字典式回填、结构级验收。对话 + 非对话 + 三部曲(mod+hak)三条线，含四铁律、引擎 token 保护、译名纪律（官方TLK→SRD 查表铁律）、TLK/strref 速查与 23 个坑（strref 复用错配 / 改译双写 / 审计假阳性 / .ncs 台词 / 共享临时文件 / 整批错位 / 截断输出建表 / 子代理专名漂移 / dict 值表达式污染 / 关键字批量修误伤）。**Kingmaker 已全译交付（7,803 条）**；大批量翻译用子代理流水线（规范+唯一裁定表先行→并行派发→主控统一）。收尾三件套定版，km/ww 工具 SG 直接复用。
 ---
 
 # NWN:EE 模组汉化流水线
@@ -236,6 +236,7 @@ CEP（Community Expansion Pack）内容物名存于 cep260.tlk（tlk_index=16）
 - 工具：`work/_zz_cep_*.py`；字典：`work/cep_cn_all.txt`。
 - 7 章 verify 全 PASS、strref/Tag 零改动，⏳ 待实机。
 - ⚠️ 两个 CEP 订阅并存时 `tlk_index=16` 会随加载顺序漂移。
+- ⚠️ **strref 遮蔽风险（10-17 WW 实锤）**：注入保留了原 strref → TLK 优先场景（Examine）可能显示 TLK 英文而非内嵌中文。WW 的 `ww_strref_fix.py`（内嵌含中文→strref=-1 等长补丁）可直接复用到 CEP 注入产物上——CEP 侧⏳待实机，若 Examine 显英文即跑它。
 - ⚠️ 注入用 erf_pack 追加式重建 → mod 体积膨胀；重做**必须从备份出发**（`MOD/modules_bak_cep_20261013/`）。
 
 ---
@@ -250,7 +251,10 @@ Kingmaker / ShadowGuard / Witch's Wake 走 `三部曲汉化/work/tri.py`，**七
 - **批次对位**：用「索引字典 T[i] → walk 批次结构产出 cn 文件」重建法，免疫物理行错位。
 - **E 集**（内部名）须按内容逐条裁定留英文，不能整集盲留。
 - ⚠️ deploy bug 已修（10-17）：按 src_paths 逐文件回各家（mod→`data\mod`、hak→`data\hk`），旧版全投 data\mod 是错的。
-- WW 已交付：10 批全过，已译 2,639 条，mod 2,532 处/hak 3,032 处回填，部署 Steam（sha 全等）⏳实机回归。详见 references/TRILOGY.md。
+- ⚠️ batch_01（试点批）曾整批错位（cn 缺行→标题/正文滞后一格）→ **每章第 1 批必须直接用索引字典重建法**；候选→译表必须全量导出过目，禁用截断终端输出建表。
+- WW 已交付+收尾：10 批全过 2,640 条；**收尾三件套**①ncs 等长汉化（138 条/946 处，禁译区=亚种匹配串）②strref 重指（1,315 处，内嵌含中文→-1）③实机回归⏳。
+- **KM 已交付（10-17 晚）**：47 批全译 7,803/7,803（批1-4 主控 + 批5-47 两波 13 子代理）；strref 重指 937 处 + ncs 26 处；审查修正 3 组专名分裂（28 处）后重部署 sha 全等 ⏳实机回归。详见 references/TRILOGY.md。
+- ⚠️ **重建流水线四步**：`tri.py build` → `ww/ww_ncs_patch.py` → `ww/ww_strref_fix.py` → `deploy`（重 build 会还原 ncs 补丁，中间两步不可省）。详见 references/TRILOGY.md。
 
 ---
 
@@ -302,6 +306,10 @@ Kingmaker / ShadowGuard / Witch's Wake 走 `三部曲汉化/work/tri.py`，**七
 
 **三部曲**（`三部曲汉化/work/`）
 - `tri.py <extract|seed|batches|apply|build|verify|deploy>` 七命令（见 references/TRILOGY.md）
+- `trilogy/{ww,km}/ncs_audit_scan.py` + `*_ncs_patch.py`：.ncs 台词审计 + 等长原位汉化（SG 改路径重扫即可复用）
+- `trilogy/{ww,km}/*_strref_fix.py`：strref 泛化重指（内嵌含中文→-1，mod+hak 全 GFF；build 后必跑）
+- `trilogy/km/_TANSPEC.md`：子代理翻译规范范本（硬规则+产出流程+唯一裁定表+自检脚本）
+- `trilogy/ww/_fix_b01_shift.py`：整批错位重排范本（key[i]←value[i+1] + 断言）
 
 ---
 

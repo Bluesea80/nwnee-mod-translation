@@ -49,6 +49,12 @@ verify 后剩余英文 = E 集，**不能整集盲留**：逐条看内容裁定�
 ### token 数校验必做
 译文 `<`/`>` 占位符数量必须与原文一致（`<FirstName>`、`<StartAction>` 等）——WW 实测靠这条抓出漏 token。
 
+### batch_01 整批错位教训（10-17 二审）
+试点批（apply 加固前手工对位）cn 缺行 → jrl 区块标题/正文**整体滞后一格**，且 1 条 [Resolved] 变体彻底漏译。
+- 修复模式：错位有规律时 `key[i] ← value[i+1]` 整批重排 + 断言自检（见 ww/_fix_b01_shift.py）。
+- **铁律：每章第 1 批必须直接用索引字典重建法**，不走手工对位。
+- **铁律：候选→译表必须经「全量导出文件逐条过目」**，截断的终端输出（head/tail）不得作为建表依据——ncs 三审 24 条喊话漏译即栽在这。
+
 ### deploy 路由（bug 已修，10-17）
 旧版把所有产物全投 `data\mod` → hak 落错位置。**已修**：按 src_paths 逐文件回各家：
 - mod → `data\mod`
@@ -58,17 +64,69 @@ verify 后剩余英文 = E 集，**不能整集盲留**：逐条看内容裁定�
 
 ---
 
-## WW 交付数据（2026-10-17）
+## WW 交付数据（2026-10-17，含收尾三件套）
 
 | 阶段 | 数据 |
 |---|---|
-| 翻译 | 10 批全过，已译 2,639 条 |
-| 回填 | mod 2,532 处 / hak 3,032 处 |
-| verify | 剩余英文全为内部名（E 集裁定通过） |
-| 部署 | Steam，sha 全等，⏳ 实机回归 |
+| 翻译 | 10 批全过，已译 2,640 条（batch_01 二审重排 + 2 条 jrl 标题补译） |
+| 回填 | mod 2,533 处 / hak 3,032 处 |
+| ncs 等长汉化 | 138 条 / 946 处 / 272 脚本（三审补 24 条喊话亚种变体） |
+| strref 重指 | mod 1,110 + hak 205 = 1,315 处（内嵌含中文→-1） |
+| verify | 剩余英文 262 uniq：全量终检=内部名（亚种匹配键 107 条为禁译区） |
+| 部署 | Steam，sha 全等，⏳ 实机回归（清单见 10-17 日志） |
+
+## 收尾三件套（WW 定版流程，SG/KM 复用）
+
+1. **ncs 台词审计**：`ww/ncs_audit_scan.py`（[len前缀]守卫扫 .ncs，custom/official 分类）→ 人工甄别 → `ww/ww_ncs_patch.py` **等长原位补丁**（UTF-8 ≤ 原 ASCII 字节数，尾随空格填充；三校验：英文归零 / NCS 头大小字段 / 体积不变）。
+   - **禁译区：亚种名匹配串**（'nomad half-elf' 等 ~200 条）——脚本比对键，翻译会弄坏亚种机制。
+   - **建表必须全量导出过目**（见上铁律）。
+2. **strref 重指**：`ww/ww_strref_fix.py`——gff_reembed 保留原 strref，TLK 优先场景（Examine）会显示官方英文遮蔽译文；凡 type12 strref 有效 + 内嵌含中文 → strref=-1（等长 dword 补丁）。白名单：内嵌空 / 纯 ASCII。
+3. **实机回归**：浮字 / 战斗喊话 / 墓志铭拼接 / Examine 专项 / jrl 标题 / 粉笔留言拼接。
+
+⚠️ **重建流水线（SG/KM 同口径）**：`tri.py build` → `ww_ncs_patch.py` → `ww_strref_fix.py` → `deploy`——重 build 会还原 ncs 补丁，两步不可省。
+
+## 译名定案
+- 🔒 Witch's Wake = 「女巫苏醒」（老板 10-17 裁定；官方未译，TLK row 110655 保留英文）。
+- 生物/规则术语查表铁律见 NAMING.md；SRD 镜像已迁 `wiki/DND-3.5-中文SRD/topics/`。
 
 ## 待办
-- ShadowGuard（4,901 条）/ Kingmaker（7,803 条）翻译
-- ncs 审计（见 PITFALLS 坑 18）
-- fix_strref_mismatch 的 hak 版适配
-- 「女巫苏醒 vs 女巫觉醒」Witch's Wake 译名待老板复核
+- ShadowGuard（4,901 条）翻译（ncs/strref 两工具改路径重扫即可复用）
+- Kingmaker 批 5–47（余 5,594 条；批 1–4 已于 10-17 完成）
+- WW 实机回归（清单见 10-17 日志）
+
+---
+
+## KM 拥王者实战（2026-10-17 晚，47 批 7,803 条全译交付）
+
+### 子代理流水线 = 大批量翻译的正解（>5,000 条时）
+1. **先固化规范再派发**：`work/trilogy/km/_TANSPEC.md` = 硬性规则（token 原样保留/引号风格/口吻/留英文判据）+ 产出流程（_mkview 视图 → _bNN_cn.py 索引字典 → apply → 自检脚本）+ **唯一裁定表（专名一对一，含禁用变体）**。规范先行是防专名分裂的**根本解**。
+2. **两波并行派发**：general-purpose 子代理每 2–6 批（3–5 万字符/代理），批 1–4 主控自译垫定口吻基准。
+3. **主控收货统一**：跨代理专名漂移必现（同一堡名 4 种拼法）→ 按裁定表 34 组替换对批量修正 → 全量 token/脏文本复查 → 一次 build/deploy。
+4. **独立审查闭环**：交付后跑专名一致性全扫（本例 3 组分裂 28 处，见 `三部曲汉化/docs/KM专名分裂修正清单.md` 口径），修正后重 build+两补丁+deploy。
+
+### 索引字典重建法（每批标配）
+- `_mkview.py km NN`：批次 → 带序号视图（#N [已译/待译]）。
+- `_bNN_cn.py`：`T = {view序号: "译文"}`（只含空值条目）→ walk 批结构产出 cn 文件；**dict 值必须纯字符串字面量**（见坑 21）；文件尾带 unseeded 校验段（missing/extra 双向断言）。
+- 收尾自检三连：未填=0 / `'replace(' not in v` / token 数一致。
+
+### 收尾两件套（km 版，SG 同口径复用）
+- `trilogy/km/ncs_audit_scan.py` + `km_ncs_patch.py`：ncs 台词审计（KM 仅 17 条/26 处/17 脚本，全 mod 层）+ 等长 UTF-8 中文+空格填充（译文须 ≤ 原文字节数，先跑等长校验）。
+- `trilogy/km/km_strref_fix.py`：strref 重指（内嵌含中文且 strref 有效 → -1；KM 实测 mod 799 + hak 138 = 937 处）。
+- ⚠️ **坑15 的 fix_strref_mismatch.py 不适用三部曲**：那是 Aielund「同 strref 复用」场景的专用工具；tri.py 按英文原文精确匹配回填，不依赖 strref 对位。三部曲需要的是上面的**泛化重指**（防 TLK 遮蔽），两者别混。
+
+### 重建流水线（三部曲通用）
+```
+tri.py build <name> → <name>_ncs_patch.py → <name>_strref_fix.py → tri.py deploy <name>
+```
+重 build 会还原 out/ 层两补丁，中间两步不可省。
+
+## 译名定案（KM，🔒 老板/审查裁定）
+- Banner=**旗主**、Hand=**辅手**（10-17 老板裁定）。
+- Cyan=赛恩（赛恩堡/北赛恩/南赛恩）、Dynschall=丁斯考尔、Alias=艾莉丝、Gelani=杰拉妮、Thaddeus=塔迪厄斯、Serah=瑟拉、Levio'Sa=莱维欧莎、Jaess=雅斯、The Stan=老斯坦。
+- Dylan=**迪伦**（弃卓兰/狄兰）、Manticore=**蝎狮**（弃蝎尾狮/曼提柯尔/曼提克尔/毒之鞭）、Intellect Devourer=**噬智魔**（SRD 官方）。
+- 行会两家勿混：Trades Guild=贸易行会/The Trades=贸易行（老斯坦）vs Merchants Guild=商人工会（杰拉妮→塔迪厄斯）。
+
+## 待办（更新）
+- ~~Kingmaker~~ ✅ 全译交付（7,803/7,803，含两补丁）⏳ 实机回归
+- ShadowGuard（4,901 条）：开工前**一次列全高频专名入裁定表**（防分裂根本解）；ncs/strref 两工具改路径重扫即可复用
+- WW/KM 实机回归
