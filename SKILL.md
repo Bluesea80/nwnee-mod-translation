@@ -3,8 +3,8 @@ name: nwn-mod-translation
 displayName: NWN:EE 模组汉化流水线
 description: NWN:EE（无冬之夜增强版）模组（.mod/.erf/.hak）简体中文汉化的完整工程流水线——抽取 GFF 内 CExoLocString、按批翻译、字典式回填、结构级验收。覆盖对话(.dlg)、非对话(uti/utc/are/jrl/ifo/git/utp/ute/utt/utw)与premium三部曲(mod+hak双层)三条线。当需要继续/复查 Aielund Saga 任意章节、做 Kingmaker/ShadowGuard/Witch's Wake 三部曲汉化，或对任何 NWN:EE 模组做同类汉化时使用。实测来自 Aielund Saga 全 7 章汉化全闭环 + 三部曲 Witch's Wake 交付。
 agent_created: true
-version: 1.5.0
-summary: NWN:EE 模组简体中文汉化流水线——抽取 GFF CExoLocString、按批翻译、字典式回填、结构级验收。对话 + 非对话 + 三部曲(mod+hak)三条线，含四铁律、引擎 token 保护、译名纪律（官方TLK→SRD 查表铁律）、TLK/strref 速查与 23 个坑（strref 复用错配 / 改译双写 / 审计假阳性 / .ncs 台词 / 共享临时文件 / 整批错位 / 截断输出建表 / 子代理专名漂移 / dict 值表达式污染 / 关键字批量修误伤）。**Kingmaker 已全译交付（7,803 条）**；大批量翻译用子代理流水线（规范+唯一裁定表先行→并行派发→主控统一）。收尾三件套定版，km/ww 工具 SG 直接复用。
+version: 1.6.0
+summary: NWN:EE 模组简体中文汉化流水线——抽取 GFF CExoLocString、按批翻译、字典式回填、结构级验收。对话 + 非对话 + 三部曲(mod+hak)三条线，含四铁律、引擎 token 保护、译名纪律（官方TLK→SRD 查表铁律）、TLK/strref 速查与 23 个坑（strref 复用错配 / 改译双写 / 审计假阳性 / .ncs 台词 / 共享临时文件 / 整批错位 / 截断输出建表 / 子代理专名漂移 / dict 值表达式污染 / 关键字批量修误伤）。**三部曲全交付：WW 2,640 / KM 7,803 / SG 4,901 条**；大批量翻译用子代理流水线（规范+唯一裁定表先行→并行派发→主控统一）。ncs 台词四层盲区（单字节守卫/rtype/同句多形态/混合常量）已根治，终检=双口径（2 字节大端 + 混合残段），工具 lib/ncs_strings.py + _ncs_gate.py + _ncs_patch2/3 定版可复用。23+4 个坑。
 ---
 
 # NWN:EE 模组汉化流水线
@@ -307,7 +307,9 @@ Kingmaker / ShadowGuard / Witch's Wake 走 `三部曲汉化/work/tri.py`，**七
 **三部曲**（`三部曲汉化/work/`）
 - `tri.py <extract|seed|batches|apply|build|verify|deploy>` 七命令（见 references/TRILOGY.md）
 - `trilogy/{ww,km}/ncs_audit_scan.py` + `*_ncs_patch.py`：.ncs 台词审计 + 等长原位汉化（SG 改路径重扫即可复用）
-- `trilogy/{ww,km}/*_strref_fix.py`：strref 泛化重指（内嵌含中文→-1，mod+hak 全 GFF；build 后必跑）
+- `trilogy/{ww,km,sg}/*_strref_fix.py`：strref 泛化重指（内嵌含中文→-1，mod+hak 全 GFF；build 后必跑）
+- `work/lib/ncs_strings.py` + `work/_ncs_gate.py`：**ncs 2 字节大端解析 + 三部统一终检门禁（双口径）**——ncs 扫描/终检唯一合法口径
+- `work/trilogy/_ncs_patch2.py` / `_ncs_patch3.py`：ncs 漏译清欠补丁范本（out/ 层直接替换，含混合残段）
 - `trilogy/km/_TANSPEC.md`：子代理翻译规范范本（硬规则+产出流程+唯一裁定表+自检脚本）
 - `trilogy/ww/_fix_b01_shift.py`：整批错位重排范本（key[i]←value[i+1] + 断言）
 

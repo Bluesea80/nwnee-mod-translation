@@ -130,3 +130,29 @@ tri.py build <name> → <name>_ncs_patch.py → <name>_strref_fix.py → tri.py 
 - ~~Kingmaker~~ ✅ 全译交付（7,803/7,803，含两补丁）⏳ 实机回归
 - ShadowGuard（4,901 条）：开工前**一次列全高频专名入裁定表**（防分裂根本解）；ncs/strref 两工具改路径重扫即可复用
 - WW/KM 实机回归
+
+---
+
+## ncs 台词终极口径（10-18 定案：四层盲区 + 双口径终检）
+
+> SG/KM/WW 实战迭代四轮后定版。**任何 ncs 扫描/终检代码禁止再用单字节守卫。**
+
+### 四层盲区（每层都是真漏过译的）
+1. **单字节守卫漏长段**：NCS CONST_S 是 **2 字节大端长度前缀**；串长 32–126B 时前缀低位是可打印 ASCII，被 `[\x20-\x7e]` 正则吞进串、守卫失败 → 整常量丢弃。三部曲因此漏 421 条（SG184/KM43/WW194）。
+2. **资源类型误判**：ncs 实际 rtype=**1323**（非 2010）——过滤一律用 magic `b'NCS '`（`lib/ncs_strings.is_ncs`），勿按 rtype。
+3. **同句多形态**：同一逻辑句在不同脚本以「整段 / ~146B 拆段 / 前后缀碎片」多种形态存放；整句 key 只命中一种形态。**同句必须按实际常量形态逐个建 key**（用 `ncs_audit/_custom_all.json` 精确串，勿 trim）。
+4. **混合常量免疫**：短 key 命中后常量变「中文+英文残段」，长度前缀对应含中文整串 → 任何长度守卫对 ASCII 残段失效。检测：ASCII 段且前邻字节 ≥0x80（中文 UTF-8 尾）。
+
+### 工具链（现行版）
+- `work/lib/ncs_strings.py`：`iter_strings()` 2 字节大端解析（形态1 前缀完整 / 形态2 前缀低位被吞）。
+- `work/_ncs_gate.py`：三部统一终检（2 字节口径），残留须逐条解释（dev/SKIP 属正常）。
+- `work/trilogy/_ncs_patch2.py` / `_ncs_patch3.py`：漏译清欠补丁（直接作用于 out/，无需重 build；patch3 处理混合残段）。
+- 混合残段扫描脚本：见 TRILOGY 流程（ASCII 段 + 前邻 ≥0x80 + like_speech）。
+
+### 终检双口径（缺一不可）
+1. 2 字节 gate：残留逐条解释（dev/引擎标记/at_tester 断言/TourNode 键 Isle of the Dead·Tree of Life/DM 限定/SKIP <12B 碎片——均不译）。
+2. 混合残段扫描：应为 0。
+**铁律：终检先验证「能抓到已知残留」再信 0**（rtype 事故教训）；终检对象必须是**当前部署 sha 的产物**——审查/复扫引用旧 sha 数据会得出假结论（10-18 实例）。
+
+### DEV 不译清单（审查定案）
+TourNode 状态机键（Isle of the Dead / Tree of Life）、at_tester 断言、`<<...>>`/`[全大写]` 引擎标记、DM 限定文本、`should be` 开发者注释、<12B 拼接碎片。
